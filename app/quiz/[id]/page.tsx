@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 
 interface Question {
   id: number;
@@ -17,13 +18,23 @@ export default function QuizDetailsPage() {
   const quizId = params.id as string;
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [userId, setUserId] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const { user, dbUser, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
     async function fetchQuestions() {
       try {
         const res = await fetch(`/api/quizzes/${quizId}/questions`);
@@ -39,7 +50,7 @@ export default function QuizDetailsPage() {
       }
     }
     fetchQuestions();
-  }, [quizId]);
+  }, [quizId, user]);
 
   const handleInputChange = (questionId: number, value: string) => {
     setAnswers((prev) => ({
@@ -50,6 +61,11 @@ export default function QuizDetailsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!dbUser) {
+      setError("User profile not loaded. Please try again.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setSubmitSuccess(false);
@@ -67,7 +83,7 @@ export default function QuizDetailsPage() {
       // Submit each answer individually (as required by POST /api/answers)
       const submitPromises = activeAnswers.map(async ([qId, answerText]) => {
         const payload = {
-          user_id: userId,
+          user_id: dbUser.id,
           question_id: parseInt(qId, 10),
           answer: answerText,
         };
@@ -93,6 +109,14 @@ export default function QuizDetailsPage() {
     }
   };
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-slate-950">
+        <div className="text-slate-400">Verifying session...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-slate-950 relative overflow-hidden">
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -112,16 +136,13 @@ export default function QuizDetailsPage() {
           </div>
 
           <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-lg p-3">
-            <span className="text-xs font-medium text-slate-400">User Profile (ID):</span>
-            <input
-              type="number"
-              value={userId}
-              onChange={(e) => setUserId(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-16 bg-slate-950 border border-slate-700 rounded text-center text-sm font-semibold py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-white"
-              min="1"
-            />
+            <span className="text-xs font-medium text-slate-400">Submitting as:</span>
+            <span className="text-sm font-semibold text-white">
+              {dbUser ? `${dbUser.email} (ID: ${dbUser.id})` : "Syncing profile..."}
+            </span>
           </div>
         </div>
+
 
         {submitSuccess && (
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-6 text-center text-emerald-400 space-y-2 animate-fadeIn">

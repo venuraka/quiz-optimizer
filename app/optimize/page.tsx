@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 
 interface Quiz {
   id: number;
@@ -28,8 +30,18 @@ export default function OptimizePage() {
   const [loadingQuizzes, setLoadingQuizzes] = useState(true);
   const [isOptimizing, startOptimizing] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
     async function fetchQuizzes() {
       try {
         const res = await fetch("/api/quizzes");
@@ -53,7 +65,16 @@ export default function OptimizePage() {
     }
 
     fetchQuizzes();
-  }, []);
+  }, [user]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-slate-950">
+        <div className="text-slate-400">Verifying session...</div>
+      </div>
+    );
+  }
+
 
   const handleOptimize = async (e: React.FormEvent) => {
     e.preventDefault();
