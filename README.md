@@ -50,10 +50,3 @@ Outputs:
 ## Testing
 
 All endpoints were tested using Postman.
-
-## Future Improvements
-
-- User authentication
-- Score calculation
-- Leaderboards
-- AI-based question recommendations
