@@ -30,6 +30,11 @@ export default function Navbar() {
             <Link href="/optimize" className="hover:text-slate-100 transition-colors">
               Optimizer
             </Link>
+            {user && (
+              <Link href="/submissions" className="hover:text-slate-100 transition-colors">
+                Submissions
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-4">
